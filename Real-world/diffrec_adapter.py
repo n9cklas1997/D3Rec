@@ -1,27 +1,35 @@
+import torch
 import torch.nn as nn
 from DiffRecGutter.DiffRec.models.gaussian_diffusion import ModelMeanType
-from DiffRecGutter.DiffRec.models.DNN import DNN
 
 class DiffRecAdapter(nn.Module):
+    """
+    Makes DiffRec DNN compatible with D3Rec training & sampling.
+    Always returns x0_hat.
+    """
     def __init__(self, dnn_model, mean_type, d3_diffusion):
         super().__init__()
-        self.model = dnn_model
+        self.dnn = dnn_model
         self.mean_type = mean_type
         self.diffusion = d3_diffusion
 
-    def forward(self, x_t, t, probs=None, probs_mask=None):
-        # DiffRec DNN only takes (x_t, t)
-        out = self.model(x_t, t)
+    def forward(self, x_t, t, **kwargs):
+        """
+        Args:
+            x_t: [B, n_items]
+            t:   [B]
+        Returns:
+            x0_hat: [B, n_items]
+        """
+        eps_or_x0 = self.dnn(x_t, t)
 
         if self.mean_type == ModelMeanType.START_X:
-            return out
+            return eps_or_x0
 
-        elif self.mean_type == ModelMeanType.EPSILON:
-            # ε → x0 conversion using D3Rec diffusion stats
-            sqrt_alpha_bar = self.diffusion.sqrt_alpha_bar[t][:, None]
-            sqrt_one_minus_alpha_bar = self.diffusion.sqrt_one_minus_alpha_bar[t][:, None]
-            x0_hat = (x_t - sqrt_one_minus_alpha_bar * out) / sqrt_alpha_bar
+        if self.mean_type == ModelMeanType.EPSILON:
+            sqrt_ab = self.diffusion.sqrt_alpha_bar[t].view(-1, 1)
+            sqrt_1mab = self.diffusion.sqrt_one_minus_alpha_bar[t].view(-1, 1)
+            x0_hat = (x_t - sqrt_1mab * eps_or_x0) / sqrt_ab
             return x0_hat
 
-        else:
-            raise ValueError("Unknown mean type")
+        raise ValueError(f"Unsupported mean type {self.mean_type}")
