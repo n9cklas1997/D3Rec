@@ -166,7 +166,7 @@ class Diffusion():
             for t_idx in reverse_t:
                 x_t = torch.cat([x_t] * 2, dim=0)
                 t = torch.tensor([t_idx] * x_t.shape[0]).to(x_0.device)
-                x_0_hat = model(x_t, t, div, div_mask)
+                x_0_hat = model(x_t, t, div, div_mask, recon_only=True) ## added recon_only=true -----
                 x_0_hat = (1 + guide_w) * x_0_hat[:batch_size] - guide_w * x_0_hat[batch_size:]
                 mean_hat = self.posterior_mean_coef1[t[:batch_size]][:, None] * x_t[:batch_size] + self.posterior_mean_coef2[t[:batch_size]][:, None] * x_0_hat
                 if sampling_noise is True:

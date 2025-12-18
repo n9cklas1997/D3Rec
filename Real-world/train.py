@@ -1,4 +1,10 @@
-import os, time
+import sys
+import os
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, ROOT)
+
+import time
 from datetime import timedelta
 import argparse
 
@@ -45,12 +51,15 @@ def main(args, dataset_dir_path, best_model_path):
     ).to(args.device)
 
 
-    # Wrap with adapter
     model = DiffRecAdapter(
         dnn_model=dnn,
-        mean_type=ModelMeanType.EPSILON,   # DiffRec usually predicts epsilon
-        d3_diffusion=diffusion
+        mean_type=ModelMeanType.EPSILON,
+        d3_diffusion=diffusion,
+        num_cate=dataset.num_cate
     ).to(args.device)
+
+
+
 
 
     
@@ -71,6 +80,8 @@ def main(args, dataset_dir_path, best_model_path):
     start_epoch = 1
 
     print("Start training")
+    print("Using model:", type(model))
+    print("Model details:", model)
 
     start_total = time.time()
     for epoch in range(start_epoch, args.epochs + 1):
