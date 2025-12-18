@@ -10,6 +10,11 @@ from utils_train import *
 from utils import *
 from models import *
 
+from DiffRecGutter.DiffRec.models.DNN import DNN
+from DiffRecGutter.DiffRec.models.gaussian_diffusion import ModelMeanType
+from diffrec_adapter import DiffRecAdapter
+
+
 
 def main(args, dataset_dir_path, best_model_path):
     print(args)
@@ -31,12 +36,33 @@ def main(args, dataset_dir_path, best_model_path):
         noise_schedule=args.noise_schedule,
         device=args.device)
 
-    model = D3Rec(
-        dims=args.dims,
-        n_item=dataset.num_items,
-        n_cate=dataset.num_cate,
-        dim_step=args.dim_step,
-        dropout=args.dropout).to(args.device)
+    # DiffRec DNN
+    dnn = DNN(
+        in_dims=[dataset.num_items, 600, 200],
+        out_dims=[200, 600, dataset.num_items],
+        emb_size=args.dim_step,
+        dropout=args.dropout
+    ).to(args.device)
+
+
+    # Wrap with adapter
+    model = DiffRecAdapter(
+        dnn_model=dnn,
+        mean_type=ModelMeanType.EPSILON,   # DiffRec usually predicts epsilon
+        d3_diffusion=diffusion
+    ).to(args.device)
+
+
+    
+#   ----------- Original model -------------- 
+#   model = D3Rec(
+#       dims=args.dims,
+#       n_item=dataset.num_items,
+#        n_cate=dataset.num_cate,
+#       dim_step=args.dim_step,
+#        dropout=args.dropout).to(args.device)
+
+
 
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=args.wd)
 
