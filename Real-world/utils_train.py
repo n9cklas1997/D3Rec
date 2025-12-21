@@ -74,19 +74,32 @@ def calculate_loss(args, model, diffusion, x_0, prob, matrix_F):
     return loss_recon + loss_cate + args.lamda * (loss_ortho + loss_emb)
 
 
-def train_one_epoch(args, model, diffusion, optimizer, loader, matrix_F):
+def train_one_epoch(args, model, diffusion, optimizer, train_loader):
     model.train()
     total_loss = 0.0
 
-    for x_0, prob, prob_pred in loader:
-        x_0 = x_0.to(args.device)
-        prob = prob.to(args.device)
+    for batch in train_loader:
+        # batch is user interaction vector
+        if isinstance(batch, (list, tuple)):
+            x_start = batch[0]
+        else:
+            x_start = batch
 
-        loss = calculate_loss(args, model, diffusion, x_0, prob, matrix_F)
+        x_start = x_start.to(args.device).float()
+
         optimizer.zero_grad()
+
+        terms = diffusion.training_losses(
+            model=model,
+            x_start=x_start,
+            reweight=args.snr
+        )
+
+        loss = terms["loss"].mean()
         loss.backward()
         optimizer.step()
 
         total_loss += loss.item()
 
-    return total_loss / len(loader)
+    return total_loss / len(train_loader)
+

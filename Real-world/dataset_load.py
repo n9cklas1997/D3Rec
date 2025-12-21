@@ -24,6 +24,14 @@ class D3RecData(Dataset):
 def load_data(args, dir_path):
     dataset = PreProcess(args, dir_path, use_cache=True)
 
+    # DEBUG PRINTS
+    print("sp_train type:", type(dataset.sp_train))
+    print("sp_train shape:", dataset.sp_train.shape)
+    row0 = dataset.sp_train.getrow(0).toarray()[0]
+    print("First row (as array):", row0)
+    print("Unique values in first row:", np.unique(row0))
+    print("dtype of first row:", row0.dtype)
+
     train_dataset = D3RecData(dataset.sp_train, dataset.df_user_pref_train, dataset.df_user_pref_valid)
     valid_dataset = D3RecData(dataset.sp_train, dataset.df_user_pref_train, dataset.df_user_pref_valid)
     if args.test_w_valid:
